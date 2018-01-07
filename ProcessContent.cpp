@@ -9,6 +9,7 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/foreach.hpp>
 #include <iostream>
+#include <thread>
 
 void PrintVideoNames( std::list<Video*> v )
 {
@@ -96,9 +97,9 @@ int ReadFile( std::string dataFileName, std::unordered_map<std::string, Content*
 	return 1;
 }
 
-std::list<Playlist> ConstructPlaylists( std::string contentName, Country country, std::unordered_map<std::string, Content*> contentMap, std::unordered_map<std::string, Preroll*> prerollMap, ErrorCode* errorCode )
+void ConstructPlaylists( std::string contentName, Country country, std::unordered_map<std::string, Content*>& contentMap, std::unordered_map<std::string, Preroll*>& prerollMap, std::list<Playlist>& pl, ErrorCode* errorCode )
 {
-	std::list<Playlist> pl;
+	//std::list<Playlist> pl;
 
 	std::string sCountry = CountryToString( country );
 	Content* content = contentMap[contentName];
@@ -199,7 +200,7 @@ std::list<Playlist> ConstructPlaylists( std::string contentName, Country country
 		} // loop for cVideo
 	}
 	
-	return pl;
+	//return pl;
 }
 
 void PrintPlaylist( Playlist p )
@@ -210,20 +211,94 @@ void PrintPlaylist( Playlist p )
 	std::cout << "]\n";
 }
 
+void SplitContentMap( std::unordered_map<std::string, Content*>& contentMap,
+					  std::unordered_map<std::string, Content*>& contentMap1,
+					  std::unordered_map<std::string, Content*>& contentMap2 )
+{
+	auto first = contentMap.begin();
+	auto last = contentMap.end();
+	
+	auto mid = contentMap.begin();
+	std::advance( mid, std::distance( first, last )/2 );
+	
+	contentMap1.insert( first, mid );
+	contentMap2.insert( mid, last );
+}
+
+void SplitPrerollMap( std::unordered_map<std::string, Preroll*>& prerollMap,
+					  std::unordered_map<std::string, Preroll*>& prerollMap1,
+					  std::unordered_map<std::string, Preroll*>& prerollMap2 )
+{
+	auto first = prerollMap.begin();
+	auto last = prerollMap.end();
+	
+	auto mid = prerollMap.begin();
+	std::advance( mid, std::distance( first, last )/2 );
+	
+	prerollMap1.insert( first, mid );
+	prerollMap2.insert( mid, last );
+}
+
+void CombinePlaylists( std::list<Playlist>& l1,
+					   std::list<Playlist>& l2,
+					   std::list<Playlist>& l3,
+					   std::list<Playlist>& l4,
+					   std::list<Playlist>& result )
+{
+	result.splice( result.end(), l1 );;
+	result.splice( result.end(), l2 );;
+	result.splice( result.end(), l3 );;
+	result.splice( result.end(), l4 );;
+}
+
 /*
-std::list<Playlist> ConstructPlaylistsParallel( std::string contentName, Country country, std::unordered_map<std::string, Content*> contentMap, std::unordered_map<std::string, Preroll*> prerollMap, ErrorCode* ec )
+  An illustration of how to parallelize computation.
+  In this case, there is a fixed amount of parallelism by splitting each unordered_map into two.
+  For a practical implementation the split should be based on some maximum size being exceeded.
+  For large amount of data, the split should happen before the data is loaded in memory as an unordered_map.
+ */
+/*
+
+Commented out -- Xcode wont compile the std::thread constructor calls
+
+void ConstructPlaylistsParallel( std::string contentName, Country country, std::unordered_map<std::string, Content*>& contentMap, std::unordered_map<std::string, Preroll*>& prerollMap, std::list<Playlist>& result, ErrorCode* ec )
 {
 	// Split contentMap -> contentMap1, contentMap2
+	std::unordered_map<std::string, Content*> contentMap1, contentMap2;
+	SplitContentMap( contentMap, contentMap1, contentMap2 );
 	
 	// Split prerollMap -> prerollMap1, prerollMap2
+	std::unordered_map<std::string, Preroll*> prerollMap1, prerollMap2;
+	SplitPrerollMap( prerollMap, prerollMap1, prerollMap2 );
 
-	std::list<Playlist> l11 = ConstructPlaylists( contentName, country, contentMap1, prerollMap1 );
-	std::list<Playlist> l12 = ConstructPlaylists( contentName, country, contentMap1, prerollMap2 );
-	std::list<Playlist> l21 = ConstructPlaylists( contentName, country, contentMap2, prerollMap1 );
-	std::list<Playlist> l22 = ConstructPlaylists( contentName, country, contentMap2, prerollMap2 );
-
-	// Merge all lists and return
+	// Create threads to compute in parallel
+	std::list<Playlist> l11;
+	ErrorCode ec11;
+	std::thread t1( ConstructPlaylists, contentName, country, contentMap1, prerollMap1, l11, &ec11 );
 	
+	std::list<Playlist> l12;
+	ErrorCode ec12;
+	std::thread t2( ConstructPlaylists, contentName, country, contentMap1, prerollMap2, l12, &ec12 );
+	
+	std::list<Playlist> l21;
+	ErrorCode ec21;
+	std::thread t3( ConstructPlaylists, contentName, country, contentMap2, prerollMap1, l21, &ec21 );
+	
+	std::list<Playlist> l22;
+	ErrorCode ec22;
+	std::thread t4( ConstructPlaylists, contentName, country, contentMap2, prerollMap2, l22, &ec22 );
+
+	// Wait for all threads to finish
+	t1.join();
+	t2.join();
+	t3.join();
+	t4.join();
+
+
+	// Combine results - Merge all lists and all error codes
+	CombinePlaylists( l11, l12, l21, l22, result );
+
+	// TODO The error codes need to be merged with some logic as well
 }
 */
 
@@ -241,7 +316,8 @@ std::list<Playlist> GetPlaylistsFromJSON( std::string filename, std::string cont
 		std::cout << v << "\n";
 	*/
 
-	std::list<Playlist> playlists = ConstructPlaylists( contentId, c, contentMap, prerollMap, ec );
+	std::list<Playlist> playlists;
+	ConstructPlaylists( contentId, c, contentMap, prerollMap, playlists, ec );
 
 	return playlists;
 }
