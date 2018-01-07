@@ -17,16 +17,9 @@ std::list<std::string> Preroll::GetVideoNamesForCountryLanguageAspect( const Cou
 	return vSet;
 }
 
-std::list<std::string> Preroll::GetVideoNamesForCountryLanguage( const Country c, const Language l )
+std::list<Video*> Preroll::GetVideos()
 {
-	std::list<std::string> vSet;
-	for( auto v = videos.begin(); v != videos.end(); ++v )
-	{
-		if ( (*v)->HasCountry( c ) && ( (*v)->GetLanguage() == l ) )
-			vSet.push_back( (*v)->GetName() );
-	}
-	
-	return vSet;
+	return videos;
 }
 
 

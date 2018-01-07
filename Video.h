@@ -37,6 +37,10 @@ public:
 	}
 
 };
+
+std::list<Video*> FilterVideosByCountry( std::list<Video*>, Country );
+std::list<Video*> FilterVideosByLanguage( std::list<Video*>, Language );
+std::list<Video*> FilterVideosByAspectRatio( std::list<Video*>, AspectRatio );
 /*
 namespace std
 {

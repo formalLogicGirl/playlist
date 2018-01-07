@@ -19,7 +19,7 @@ public:
 
 	std::list<std::string> GetVideoNamesForCountryLanguageAspect( const Country c, const Language l, const AspectRatio ar );
 
-	std::list<std::string> GetVideoNamesForCountryLanguage( const Country c, const Language l );
+	std::list<Video*> GetVideos();
 
 };
 

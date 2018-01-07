@@ -111,7 +111,7 @@ std::list<Playlist> ConstructPlaylists( std::string contentName, Country country
 		*/
 		if( cVids.size() == 0 )
 		{
-			*errorCode = ECODE_NO_CONTENT_FOUND;
+			*errorCode = ECODE_NO_CONTENT_VIDEO_FOUND;
 		}
 		for( Video* cVideo : cVids )
 		{
@@ -125,56 +125,68 @@ std::list<Playlist> ConstructPlaylists( std::string contentName, Country country
 			for( std::string prName : content->GetPrerollNames() )
 			{
 				Preroll* pr = prerollMap[prName];
-				// Can pr be played in country?
-				// Can pr be played with the same aspect ratio and language as cVideo?
-				std::list<std::string> pVids = pr->GetVideoNamesForCountryLanguageAspect( country, language, aspect );
+				// Can pr be played in same country, with the same aspect ratio and language as cVideo?
+				// std::list<std::string> pVids = pr->GetVideoNamesForCountryLanguageAspect( country, language, aspect );
 				/*
 				std::cout << "Videos for country" << sCountry << "preroll name" << prName << "\n";
 				for( std::string s : pVids )
 					std::cout << s << "\n";
 				*/
-
-				if( pVids.size() > 0 )
+				std::list<Video*> vAll = pr->GetVideos();
+				std::list<Video*> vByCountry = FilterVideosByCountry( vAll, country );
+				if( vByCountry.size() == 0 )
 				{
-					// Add to playlists
-					std::list<Playlist> playlistsForOneContentVideoNextVersion;
-					if ( playlistsForOneContentVideo.size() == 0 )
-					{
-						for( std::string pVid : pVids )
-						{
-							Playlist newP;
-							newP.push_back( pVid );
-							playlistsForOneContentVideoNextVersion.push_back( newP );
-						}
-					}
-					else
-					{
-						for( std::string pVid : pVids )
-						{
+					*errorCode = ECODE_NO_PREROLL_FOR_COUNTRY;
+					prerollNotFound = true;
+					break;					
+				}
+				std::list<Video*> vByLanguage = FilterVideosByLanguage( vByCountry, language );
+				if( vByLanguage.size() == 0 )
+				{
+					*errorCode = ECODE_NO_PREROLL_FOR_LANGUAGE;
+					prerollNotFound = true;
+					break;					
+				}
+				std::list<Video*> pVids = FilterVideosByAspectRatio( vByLanguage, aspect );
 
-							for( Playlist p : playlistsForOneContentVideo )
-							{
-								// p + pVid
-								Playlist newP;
-								newP.assign( p.begin(), p.end() );
-								newP.push_back( pVid );
-								playlistsForOneContentVideoNextVersion.push_back( newP );
-							}
-						}
+				if( pVids.size() == 0 )
+				{
+					*errorCode = ECODE_NO_PREROLL_FOR_ASPECT;
+					prerollNotFound = true;
+					break;
+				}				
+
+				// Add to playlists
+				std::list<Playlist> playlistsForOneContentVideoNextVersion;
+				if ( playlistsForOneContentVideo.size() == 0 )
+				{
+					for( Video* pVid : pVids )
+					{
+						Playlist newP;
+						newP.push_back( pVid->GetName() );
+						playlistsForOneContentVideoNextVersion.push_back( newP );
 					}
-					// copy over : playlistsForOneContentVideo <- playlistsForOneContentVideoNextVersion
-					playlistsForOneContentVideo.clear();
-					playlistsForOneContentVideo.assign ( playlistsForOneContentVideoNextVersion.begin(), playlistsForOneContentVideoNextVersion.end() );
 				}
 				else
 				{
-					prerollNotFound = true;
-					*errorCode = ECODE_NO_PREROLL_FOUND;
-					break;
-				}				
+					for( Video* pVid : pVids )
+					{						
+						for( Playlist p : playlistsForOneContentVideo )
+						{
+							// p + pVid
+							Playlist newP;
+							newP.assign( p.begin(), p.end() );
+							newP.push_back( pVid->GetName() );
+							playlistsForOneContentVideoNextVersion.push_back( newP );
+						}
+					}
+				}
+				// copy over : playlistsForOneContentVideo <- playlistsForOneContentVideoNextVersion
+				playlistsForOneContentVideo.clear();
+				playlistsForOneContentVideo.assign ( playlistsForOneContentVideoNextVersion.begin(), playlistsForOneContentVideoNextVersion.end() );
 			} // loop for prName
 
-			if ( !prerollNotFound )  // All prerolls have been attached
+			if ( !prerollNotFound )  // All prerolls have been successfully attached
 			{
 				// Add cVideo to playlist. Then add the resulting playlist to the master list
 				for( Playlist p : playlistsForOneContentVideo )
@@ -214,22 +226,30 @@ std::list<Playlist> ConstructPlaylistsParallel( std::string contentName, Country
 	
 }
 */
-int main()
-{
-	std::cout << "Hello\n";
 
+std::list<Playlist> GetPlaylistsFromJSON( std::string filename, std::string contentId, Country c, ErrorCode* ec )	
+{
 	std::unordered_map<std::string, Content*> contentMap;
 	std::unordered_map<std::string, Preroll*> prerollMap;
 
-	ReadFile( "sample.json", contentMap, prerollMap );
+	ReadFile( filename, contentMap, prerollMap );
+
 	/*
 	for( std::string pn : contentMap["MI3"]->GetPrerollNames() )
 		std::cout << pn << "\n";
 	for( std::string v : prerollMap["WB1"]->GetVideoNamesForCountryLanguage( CNTRY_UK, LANG_ENGLISH ) )
 		std::cout << v << "\n";
 	*/
+
+	std::list<Playlist> playlists = ConstructPlaylists( contentId, c, contentMap, prerollMap, ec );
+
+	return playlists;
+}
+
+int main()
+{
 	ErrorCode ec;
-	std::list<Playlist> playlists = ConstructPlaylists( "MI3", CNTRY_UK, contentMap, prerollMap, &ec );
+	std::list<Playlist> playlists = GetPlaylistsFromJSON( "sample.json", "MI3", CNTRY_UK, &ec );
 	std::cout << playlists.size() << "\n";
 	for( Playlist p : playlists )
 	{
