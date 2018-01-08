@@ -29,7 +29,7 @@ void ReadChildVideoArray( boost::property_tree::ptree& parentNode, std::list<Vid
 		std::string lang = vidAttrRoot.get( "language", "langDefault" );
 		std::string ar = vidAttrRoot.get( "aspect", "aspectDefault" );
 
-		std::cout << vidName << "\t" << lang << "\t" << ar << "\t\t";
+		// std::cout << vidName << "\t" << lang << "\t" << ar << "\t\t";
 
 		std::list<Country> cntries; 
 		for ( boost::property_tree::ptree::value_type &cntry : vidAttrRoot.get_child( "countries" ) )
@@ -39,9 +39,9 @@ void ReadChildVideoArray( boost::property_tree::ptree& parentNode, std::list<Vid
 			if ( c != CNTRY_UNKNOWN )
 				cntries.push_back( c );
 			
-			std::cout << cntryName << "\t";
+			// std::cout << cntryName << "\t";
 		}
-		std::cout << "\n";
+		// std::cout << "\n";
 
 		Language l = LanguageFromString( lang );
 		AspectRatio a = AspectRatioFromString( ar );
@@ -55,7 +55,7 @@ void ReadChildVideoArray( boost::property_tree::ptree& parentNode, std::list<Vid
 
 }
 
-int ReadFile( std::string dataFileName, std::unordered_map<std::string, Content*>& contentMap, std::unordered_map<std::string, Preroll*>& prerollMap )
+void ReadFile( std::string dataFileName, std::unordered_map<std::string, Content*>& contentMap, std::unordered_map<std::string, Preroll*>& prerollMap )
 {
 	boost::property_tree::ptree data;
 	boost::property_tree::read_json( dataFileName, data );
@@ -63,7 +63,7 @@ int ReadFile( std::string dataFileName, std::unordered_map<std::string, Content*
 	{
 		boost::property_tree::ptree showRoot = show.second;
 		std::string name = showRoot.get( "name", "videoNameDefault" );
-		std::cout << name << "\n";
+		// std::cout << name << "\n";
 
 		std::list<std::string> prList;
 		for ( boost::property_tree::ptree::value_type &preroll : showRoot.get_child( "preroll" ) )
@@ -71,7 +71,7 @@ int ReadFile( std::string dataFileName, std::unordered_map<std::string, Content*
 			boost::property_tree::ptree prRoot = preroll.second;
 			std::string prerollName = prRoot.get( "name", "prerollNameDefault" );
 			prList.push_back( prerollName );
-			std::cout << prerollName << "\n";
+			// std::cout << prerollName << "\n";
 		}
 
 		std::list<Video*> videoSet;
@@ -85,7 +85,7 @@ int ReadFile( std::string dataFileName, std::unordered_map<std::string, Content*
 	{
 		boost::property_tree::ptree prRoot = pr.second;
 		std::string name = prRoot.get( "name", "prerollNameDefault" );
-		std::cout << name << "\n";
+		// std::cout << name << "\n";
 
 		std::list<Video*> prerollVideoSet;
 		ReadChildVideoArray( prRoot, prerollVideoSet );
@@ -93,8 +93,6 @@ int ReadFile( std::string dataFileName, std::unordered_map<std::string, Content*
 		Preroll* preroll = new Preroll( prerollVideoSet );
 		prerollMap[name] = preroll;
 	}
-
-	return 1;
 }
 
 void ConstructPlaylists( std::string contentName, Country country, std::unordered_map<std::string, Content*>& contentMap, std::unordered_map<std::string, Preroll*>& prerollMap, std::list<Playlist>& pl, ErrorCode* errorCode )
