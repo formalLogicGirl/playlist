@@ -1,0 +1,17 @@
+Process: Video.o Preroll.o Content.o ProcessContent.o 
+	g++ -o Process Video.o Preroll.o Content.o ProcessContent.o
+
+Video.o: Video.cpp CommonDefinitions.h Video.h
+	g++ -c Video.cpp
+
+Preroll.o: Preroll.cpp CommonDefinitions.h Video.h Preroll.h
+	g++ -c Preroll.cpp
+
+Content.o: Content.cpp CommonDefinitions.h Video.h Content.h
+	g++ -c Content.cpp
+
+ProcessContent.o: ProcessContent.cpp CommonDefinitions.h Video.h Preroll.h Content.h
+	g++ -c ProcessContent.cpp
+
+clean:
+	rm *.o Process
